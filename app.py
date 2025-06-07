@@ -14,7 +14,7 @@ st.set_page_config(page_title="SimpleStorage dApp", layout="centered")
 w3 = Web3(Web3.HTTPProvider(os.getenv("WEB3_PROVIDER_URI")))
 
 # Connect to Ethereum
-w3 = Web3(Web3.HTTPProvider("https://eth-sepolia.g.alchemy.com/v2/your_api_key"))
+w3 = Web3(Web3.HTTPProvider("https://eth-sepolia.g.alchemy.com/v2/GVu7Zjue3tFE8u8-_ZcvJXjljnVw0DL0"))
 
 # Get private key from user
 private_key = st.text_input("🔐 Enter your private key", type="password")
