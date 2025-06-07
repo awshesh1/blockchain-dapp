@@ -1,6 +1,24 @@
 import os
 from web3 import Web3
 import streamlit as st
+
+# Connect to Ethereum
+w3 = Web3(Web3.HTTPProvider("https://eth-sepolia.g.alchemy.com/v2/your_api_key"))
+
+# Get private key from user
+private_key = st.text_input("🔐 Enter your private key", type="password")
+
+if private_key:
+    try:
+        account = w3.eth.account.from_key(private_key)
+        st.success(f"Wallet loaded: {account.address}")
+    except Exception as e:
+        st.error(f"❌ Invalid private key: {e}")
+        st.stop()
+else:
+    st.warning("Please enter your private key to continue.")
+    st.stop()
+
 from dotenv import load_dotenv
 import pandas as pd
 
