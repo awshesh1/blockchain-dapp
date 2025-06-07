@@ -11,7 +11,7 @@ load_dotenv()
 st.set_page_config(page_title="SimpleStorage dApp", layout="centered")
 
 # Connect to Web3
-w3 = Web3(Web3.HTTPProvider(os.getenv("WEB3_PROVIDER_URI")))
+#w3 = Web3(Web3.HTTPProvider(os.getenv("WEB3_PROVIDER_URI")))
 
 # Connect to Ethereum
 w3 = Web3(Web3.HTTPProvider("https://eth-sepolia.g.alchemy.com/v2/your_api_key"))
@@ -30,7 +30,6 @@ else:
     st.warning("Please enter your private key to continue.")
     st.stop()
 
-account = w3.eth.account.from_key(private_key)
 
 contract_address = "0x1c5afd90714E2a40547246DDD92668F2715caF78"
 
