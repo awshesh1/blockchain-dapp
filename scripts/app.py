@@ -40,6 +40,55 @@ st.write("📬 Contract Address:", contract_address)
 stored_value = contract.functions.get().call()
 st.metric("Stored Value", stored_value)
 
+new_value = st.number_input("Enter a new number to store", min_value=0, step=1)
+submit_clicked = st.button("Submit")
+
+if submit_clicked:
+    private_key = st.text_input("🔐 Enter your private key", type="password")
+
+    if not private_key:
+        st.warning("Please enter your private key to submit a transaction.")
+        st.stop()
+
+    try:
+        account = w3.eth.account.from_key(private_key)
+        st.success(f"Wallet loaded: {account.address}")
+
+        with st.spinner("Sending transaction..."):
+            nonce = w3.eth.get_transaction_count(account.address)
+            tx = contract.functions.set(new_value).build_transaction({
+                "from": account.address,
+                "nonce": nonce,
+                "gas": 100000,
+                "gasPrice": w3.to_wei("1", "gwei")
+            })
+
+            signed_tx = w3.eth.account.sign_transaction(tx, private_key)
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+            receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+
+            st.success("Transaction confirmed!")
+            st.write("🔗 Transaction Hash:", f"https://sepolia.etherscan.io/tx/{tx_hash.hex()}")
+
+            # Log interaction
+            log_data = {
+                "Block Number": [receipt.blockNumber],
+                "Stored Value": [new_value],
+                "Timestamp": [datetime.now()],
+                "Tx Hash": [tx_hash.hex()]
+            }
+
+            log_file = "contract_data_log.xlsx"
+            log_df = pd.DataFrame(log_data)
+            if os.path.exists(log_file):
+                old_df = pd.read_excel(log_file)
+                log_df = pd.concat([old_df, log_df], ignore_index=True)
+            log_df.to_excel(log_file, index=False)
+
+    except Exception as e:
+        st.error(f"❌ Invalid private key: {e}")
+        st.stop()
+
 # Optional: Private Key
 
 
