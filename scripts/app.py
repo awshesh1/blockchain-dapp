@@ -120,3 +120,40 @@ if wallet_to_check:
                 st.write(f"**Contract:** {nft.get('contractAddress')}")
                 st.write(f"**Token ID:** {nft.get('id', {}).get('tokenId')}")
                 st.markdown("---")
+
+
+st.markdown("---")
+st.subheader("💰 Wallet Summary")
+
+wallet_summary_addr = st.text_input("Enter wallet address for summary", key="summary")
+
+if wallet_summary_addr:
+    with st.spinner("Fetching wallet details..."):
+        try:
+            # ETH balance
+            balance_wei = w3.eth.get_balance(wallet_summary_addr)
+            balance_eth = w3.from_wei(balance_wei, 'ether')
+            st.metric("ETH Balance", f"{balance_eth:.4f} ETH")
+
+            # Token balances using Etherscan API
+            ETHERSCAN_API_KEY = st.secrets["ETHERSCAN_API_KEY"]
+            url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={wallet_summary_addr}&sort=desc&apikey={ETHERSCAN_API_KEY}"
+            res = requests.get(url)
+            tokens = {}
+            if res.status_code == 200:
+                data = res.json()
+                for tx in data.get("result", [])[:50]:
+                    token = tx.get("tokenName")
+                    value = int(tx.get("value")) / (10 ** int(tx.get("tokenDecimal", 18)))
+                    if token:
+                        tokens[token] = tokens.get(token, 0) + value
+
+            if tokens:
+                st.subheader("🔹 Token Holdings")
+                token_df = pd.DataFrame(tokens.items(), columns=["Token", "Approx. Total"])
+                st.dataframe(token_df, use_container_width=True)
+            else:
+                st.info("No token transactions found.")
+
+        except Exception as e:
+            st.error(f"Error: {e}")
