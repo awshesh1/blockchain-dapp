@@ -17,18 +17,18 @@ st.set_page_config(page_title="SimpleStorage dApp", layout="centered")
 w3 = Web3(Web3.HTTPProvider(f"https://eth-sepolia.g.alchemy.com/v2/st.secrets{['GVu7Zjue3tFE8u8-_ZcvJXjljnVw0DL0']}"))
 
 # Get private key from user
+# This block is ONLY for interacting with contract
 private_key = st.text_input("🔐 Enter your private key", type="password")
 
 if private_key:
     try:
         account = w3.eth.account.from_key(private_key)
         st.success(f"Wallet loaded: {account.address}")
+        
+        # ... build transaction and submit code here ...
+        
     except Exception as e:
         st.error(f"❌ Invalid private key: {e}")
-        st.stop()
-else:
-    st.warning("Please enter your private key to continue.")
-    st.stop()
 
 
 contract_address = "0xE8a4d857ABA06af12850131cD047c9Ce73160C2c"
