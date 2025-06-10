@@ -95,7 +95,7 @@ if submit_clicked:
 # Allow writing only if key is valid
 
 # Only require private key if user clicks Submit
-if st.button("Submit"):
+if st.button("Submit",key="submit_set_value"):
     private_key = st.text_input("🔐 Enter your private key", type="password")
     if not private_key:
         st.warning("Please enter your private key to submit a transaction.")
