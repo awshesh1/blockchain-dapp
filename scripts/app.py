@@ -141,13 +141,14 @@ if wallet_summary_addr:
     with st.spinner("Fetching wallet details..."):
         try:
             # ETH balance
-            balance_wei = w3.eth.get_balance(wallet_summary_addr)
+            checksum_address = w3.to_checksum_address(wallet_summary_addr.strip())
+            balance_wei = w3.eth.get_balance(checksum_address)
             balance_eth = w3.from_wei(balance_wei, 'ether')
             st.metric("ETH Balance", f"{balance_eth:.4f} ETH")
 
             # Token balances using Etherscan API
             ETHERSCAN_API_KEY = st.secrets["ETHERSCAN_API_KEY"]
-            url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={wallet_summary_addr}&sort=desc&apikey={ETHERSCAN_API_KEY}"
+            url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={checksum_address}&sort=desc&apikey={ETHERSCAN_API_KEY}"
             res = requests.get(url)
             tokens = {}
             token_transactions = []
@@ -197,7 +198,7 @@ if wallet_summary_addr:
 
             # NFT count via Alchemy
             alchemy_key = st.secrets["ALCHEMY_API_KEY"]
-            nft_url = f"https://eth-mainnet.g.alchemy.com/v2/{alchemy_key}/getNFTs?owner={wallet_summary_addr}"
+            nft_url = f"https://eth-mainnet.g.alchemy.com/v2/{alchemy_key}/getNFTs?owner={checksum_address}"
             nft_res = requests.get(nft_url)
             if nft_res.status_code == 200:
                 nft_data = nft_res.json()
