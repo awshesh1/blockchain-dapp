@@ -100,8 +100,7 @@ wallet_history_addr = st.text_input("Enter wallet address to view token transfer
 
 if wallet_history_addr:
     with st.spinner("Fetching token transfers..."):
-
-st.subheader("📊 Interaction Log")
+        st.subheader("📊 Interaction Log")
 log_file = "contract_data_log.xlsx"
 if os.path.exists(log_file):
     df_log = pd.read_excel(log_file)
