@@ -132,11 +132,34 @@ if wallet_to_check:
             for nft in nfts[:10]:
                 media = nft.get("media", [{}])
                 image_url = media[0].get("gateway", "")
+                title = nft.get("title", "N/A")
+                contract_address = nft.get("contractAddress", "N/A")
+                token_id = nft.get("id", {}).get("tokenId", "N/A")
+
                 st.image(image_url, width=200)
-                st.write(f"**Name:** {nft.get('title')}")
-                st.write(f"**Contract:** {nft.get('contractAddress')}")
-                st.write(f"**Token ID:** {nft.get('id', {}).get('tokenId')}")
+                st.write(f"**Name:** {title}")
+                st.write(f"**Contract:** {contract_address}")
+                st.write(f"**Token ID:** {token_id}")
+
+                # Expandable metadata view
+                with st.expander("📋 View Metadata"):
+                    metadata = nft.get("metadata", {})
+                    desc = metadata.get("description", "No description available.")
+                    attrs = metadata.get("attributes", [])
+                    st.write(f"**Description:** {desc}")
+                    if attrs:
+                        attr_df = pd.DataFrame(attrs)
+                        st.write("**Attributes:**")
+                        st.dataframe(attr_df)
+                    else:
+                        st.info("No attributes found.")
+                    # Optional external link
+                    external_url = metadata.get("external_url")
+                    if external_url:
+                        st.markdown(f"[🔗 External Link]({external_url})")
+
                 st.markdown("---")
+
         else:
             st.warning("No NFTs found or failed to fetch from Alchemy.")
 
