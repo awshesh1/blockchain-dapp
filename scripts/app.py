@@ -311,3 +311,52 @@ if wallet_history_addr:
         except Exception as e:
             st.error(f"Error fetching token transfers: {e}")
             st.error(f"Error: {e}")
+
+st.markdown("---")
+st.subheader("⏳ Wallet Activity Timeline")
+
+activity_addr = st.text_input("Enter wallet address for activity timeline", key="activity")
+
+if activity_addr:
+    with st.spinner("Fetching activity..."):
+        try:
+            eth_url = f"https://api.etherscan.io/api?module=account&action=txlist&address={activity_addr}&sort=asc&apikey={st.secrets['ETHERSCAN_API_KEY']}"
+            token_url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={activity_addr}&sort=asc&apikey={st.secrets['ETHERSCAN_API_KEY']}"
+            eth_res = requests.get(eth_url).json()
+            token_res = requests.get(token_url).json()
+            
+            tx_events = []
+
+            if eth_res.get("result"):
+                for tx in eth_res["result"]:
+                    tx_events.append({
+                        "Timestamp": datetime.utcfromtimestamp(int(tx["timeStamp"])),
+                        "Type": "ETH",
+                        "Direction": "Sent" if tx["from"].lower() == activity_addr.lower() else "Received",
+                        "Value": w3.from_wei(int(tx["value"]), 'ether'),
+                        "Token": "ETH",
+                        "Hash": tx["hash"]
+                    })
+
+            if token_res.get("result"):
+                for tx in token_res["result"]:
+                    tx_events.append({
+                        "Timestamp": datetime.utcfromtimestamp(int(tx["timeStamp"])),
+                        "Type": "Token",
+                        "Direction": "Sent" if tx["from"].lower() == activity_addr.lower() else "Received",
+                        "Value": int(tx["value"]) / (10 ** int(tx.get("tokenDecimal", 18))),
+                        "Token": tx["tokenName"],
+                        "Hash": tx["hash"]
+                    })
+
+            if tx_events:
+                timeline_df = pd.DataFrame(tx_events).sort_values("Timestamp", ascending=False)
+                st.dataframe(timeline_df, use_container_width=True)
+                # Export to CSV
+                csv = timeline_df.to_csv(index=False).encode('utf-8')
+                st.download_button("⬇️ Download Timeline CSV", csv, "wallet_timeline.csv", "text/csv")
+            else:
+                st.info("No transaction history found.")
+
+        except Exception as e:
+            st.error(f"Failed to fetch timeline: {e}")
