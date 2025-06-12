@@ -207,3 +207,46 @@ if wallet_summary_addr:
 
         except Exception as e:
             st.error(f"Error: {e}")
+
+# Next step: Add ERC-20 Token Transfer History Viewer
+
+import os
+import streamlit as st
+import requests
+import pandas as pd
+
+st.markdown("---")
+st.subheader("📤 ERC-20 Token Transfers")
+
+wallet_for_transfers = st.text_input("Enter wallet address for transfer history", key="transfer")
+
+if wallet_for_transfers:
+    with st.spinner("Fetching token transfers from Etherscan..."):
+        try:
+            ETHERSCAN_API_KEY = st.secrets["ETHERSCAN_API_KEY"]
+            url = (
+                f"https://api.etherscan.io/api?module=account&action=tokentx"
+                f"&address={wallet_for_transfers}&sort=desc&apikey={ETHERSCAN_API_KEY}"
+            )
+            response = requests.get(url)
+            data = response.json()
+
+            if data["status"] == "1" and isinstance(data.get("result"), list):
+                transfers = []
+                for tx in data["result"][:20]:
+                    value = int(tx["value"]) / (10 ** int(tx["tokenDecimal"]))
+                    transfers.append({
+                        "Token": tx["tokenName"],
+                        "Symbol": tx["tokenSymbol"],
+                        "Value": value,
+                        "From": tx["from"],
+                        "To": tx["to"],
+                        "Txn Hash": tx["hash"],
+                        "Date": pd.to_datetime(tx["timeStamp"], unit='s')
+                    })
+                df_tx = pd.DataFrame(transfers)
+                st.dataframe(df_tx, use_container_width=True)
+            else:
+                st.info("No token transfer data found or invalid response from Etherscan.")
+        except Exception as e:
+            st.error(f"Failed to fetch token transfers: {e}")
