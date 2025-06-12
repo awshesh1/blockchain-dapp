@@ -4,9 +4,10 @@ import streamlit as st
 import requests
 import pandas as pd
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 # Streamlit setup
-st.set_page_config(page_title="SimpleStorage dApp", layout="centered")
+st.set_page_config(page_title="Wallet Inspector", layout="centered")
 
 # Connect to Web3 using secret API key
 w3 = Web3(Web3.HTTPProvider(st.secrets["WEB3_PROVIDER_URI"]))
@@ -40,12 +41,14 @@ st.write("📬 Contract Address:", contract_address)
 stored_value = contract.functions.get().call()
 st.metric("Stored Value", stored_value)
 
+# Allow user to enter private key and submit transaction
+st.markdown("---")
+st.subheader("🔐 Submit a New Value")
 new_value = st.number_input("Enter a new number to store", min_value=0, step=1)
-submit_clicked = st.button("Submit")
+private_key = st.text_input("Enter your private key", type="password")
+submit_clicked = st.button("Submit Transaction")
 
 if submit_clicked:
-    private_key = st.text_input("🔐 Enter your private key", type="password")
-
     if not private_key:
         st.warning("Please enter your private key to submit a transaction.")
         st.stop()
@@ -179,7 +182,6 @@ if wallet_summary_addr:
                 st.dataframe(token_df, use_container_width=True)
 
                 # Pie chart
-                import matplotlib.pyplot as plt
                 fig, ax = plt.subplots()
                 ax.pie(token_df["Approx. Total"], labels=token_df["Token"], autopct='%1.1f%%', startangle=90)
                 ax.axis('equal')
