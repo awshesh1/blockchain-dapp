@@ -197,7 +197,7 @@ if wallet_summary_addr:
 
                     # Token filter
                     unique_tokens = df_history["Token"].unique().tolist()
-                    selected_tokens = st.multiselect("Filter by token name", options=unique_tokens, default=unique_tokens)
+                    selected_tokens = st.multiselect("Filter by token name", options=unique_tokens, default=unique_tokens, key="wallet_token_history")
 
                     filtered_df = df_history[df_history["Token"].isin(selected_tokens)]
                     st.dataframe(filtered_df, use_container_width=True)
@@ -293,7 +293,7 @@ if wallet_history_addr:
 
                     # Token filter
                     unique_tokens = df_history["Token"].unique().tolist()
-                    selected_tokens = st.multiselect("Filter by token name", options=unique_tokens, default=unique_tokens)
+                    selected_tokens = st.multiselect("Filter by token name", options=unique_tokens, default=unique_tokens, key="erc-20_wallet_history")
 
                     filtered_df = df_history[df_history["Token"].isin(selected_tokens)]
                     st.dataframe(filtered_df, use_container_width=True)
