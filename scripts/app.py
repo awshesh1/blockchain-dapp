@@ -143,3 +143,47 @@ if wallet_to_check:
             st.warning("No NFTs found or failed to fetch from Alchemy.")
 
 # --- Import next enhancements as separate modular blocks after this line in new updates ---
+# Wallet Snapshot Timeline Graph
+st.markdown("---")
+st.subheader("📈 Wallet Snapshot Timeline Graph")
+
+timeline_addr = st.text_input("Enter wallet address for timeline graph", key="snapshot_graph")
+
+if timeline_addr:
+    with st.spinner("Generating timeline graph..."):
+        try:
+            ETHERSCAN_API_KEY = st.secrets["ETHERSCAN_API_KEY"]
+            url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={timeline_addr}&sort=asc&apikey={ETHERSCAN_API_KEY}"
+            res = requests.get(url)
+
+            if res.status_code == 200:
+                data = res.json().get("result", [])
+                if data:
+                    df = pd.DataFrame(data)
+                    df["TimeStamp"] = pd.to_datetime(df["timeStamp"], unit="s")
+                    df["tokenDecimal"] = pd.to_numeric(df["tokenDecimal"], errors="coerce").fillna(18).astype(int)
+                    df["Value"] = df.apply(lambda x: int(x["value"]) / (10 ** x["tokenDecimal"]), axis=1)
+                    df["tokenName"] = df["tokenName"].fillna("Unknown Token")
+
+                    # Group by date and token
+                    df["Date"] = df["TimeStamp"].dt.date
+                    daily_summary = df.groupby(["Date", "tokenName"])["Value"].sum().reset_index()
+
+                    # Pivot for stacked area chart
+                    pivot_df = daily_summary.pivot(index="Date", columns="tokenName", values="Value").fillna(0)
+
+                    # Plot
+                    st.line_chart(pivot_df)
+
+                    # CSV export
+                    csv = pivot_df.reset_index().to_csv(index=False).encode("utf-8")
+                    st.download_button("⬇️ Download Timeline Data", csv, "wallet_snapshot_timeline.csv", "text/csv", key="wallet_snapshot_csv")
+
+                else:
+                    st.info("No token transfers found for this address.")
+            else:
+                st.error("Failed to fetch data from Etherscan.")
+
+        except Exception as e:
+            st.error(f"Error generating snapshot timeline: {e}")
+
