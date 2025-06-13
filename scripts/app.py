@@ -271,7 +271,7 @@ if wallet_summary_addr:
 st.markdown("---")
 st.subheader("🔁 ERC-20 Token Transfer History")
 
-wallet_history_addr = st.text_input("Enter wallet address to view token transfers", key="history")
+wallet_history_addr = st.text_input("Enter wallet address to view token transfers", key="token_transfer_history")
 
 if wallet_history_addr:
     with st.spinner("Fetching token transfers..."):
