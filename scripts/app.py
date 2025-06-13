@@ -353,7 +353,7 @@ if activity_addr:
                 st.dataframe(timeline_df, use_container_width=True)
                 # Export to CSV
                 csv = timeline_df.to_csv(index=False).encode('utf-8')
-                st.download_button("⬇️ Download Timeline CSV", csv, "wallet_timeline.csv", "text/csv"key="download_wallet_activity_button")
+                st.download_button("⬇️ Download Timeline CSV", csv, "wallet_timeline.csv", "text/csv",key="download_wallet_activity_button")
             else:
                 st.info("No transaction history found.")
 
