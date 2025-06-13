@@ -204,7 +204,7 @@ if wallet_summary_addr:
 
                     # CSV download
                     csv = filtered_df.to_csv(index=False).encode("utf-8")
-                    st.download_button("⬇️ Download CSV", csv, "token_transfers.csv", "text/csv"key="download_wallet_summary_button")
+                    st.download_button("⬇️ Download CSV", csv, "token_transfers.csv", "text/csv",key="download_wallet_summary_button")
 
                 else:
                     st.info("No token transfer history available for this address.")
