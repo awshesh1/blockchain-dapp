@@ -106,7 +106,7 @@ if os.path.exists(log_file):
     df_log = pd.read_excel(log_file)
     st.dataframe(df_log, use_container_width=True)
     csv = df_log.to_csv(index=False).encode('utf-8')
-    st.download_button("⬇️ Download CSV", csv, "contract_log.csv", "text/csv")
+    st.download_button("⬇️ Download CSV", csv, "contract_log.csv", "text/csv",key="download_wallet_history_button")
 else:
     st.info("No log data available yet.")
 
@@ -204,7 +204,7 @@ if wallet_summary_addr:
 
                     # CSV download
                     csv = filtered_df.to_csv(index=False).encode("utf-8")
-                    st.download_button("⬇️ Download CSV", csv, "token_transfers.csv", "text/csv")
+                    st.download_button("⬇️ Download CSV", csv, "token_transfers.csv", "text/csv"key="download_wallet_summary_button")
 
                 else:
                     st.info("No token transfer history available for this address.")
@@ -353,7 +353,7 @@ if activity_addr:
                 st.dataframe(timeline_df, use_container_width=True)
                 # Export to CSV
                 csv = timeline_df.to_csv(index=False).encode('utf-8')
-                st.download_button("⬇️ Download Timeline CSV", csv, "wallet_timeline.csv", "text/csv")
+                st.download_button("⬇️ Download Timeline CSV", csv, "wallet_timeline.csv", "text/csv"key="download_wallet_activity_button")
             else:
                 st.info("No transaction history found.")
 
