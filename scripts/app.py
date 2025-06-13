@@ -264,6 +264,26 @@ if wallet_summary_addr:
         except Exception as e:
             st.error(f"Error: {e}")
 
+import json
+
+if wallet_summary_addr:
+    snapshot = {
+        "wallet": wallet_summary_addr,
+        "eth_balance": f"{balance_eth:.4f} ETH",
+        "tokens": tokens,
+        "nft_count": nft_count
+    }
+
+    snapshot_json = json.dumps(snapshot, indent=2)
+    st.download_button(
+        label="📥 Download Wallet Snapshot (JSON)",
+        data=snapshot_json,
+        file_name=f"{wallet_summary_addr}_snapshot.json",
+        mime="application/json", 
+        key= "download_wallet_compiled_summary"
+    )
+
+
 # Next step: Add ERC-20 Token Transfer History Viewer
 
 # Add this below your Wallet Summary section
