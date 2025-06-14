@@ -32,385 +32,404 @@ abi = [
 ]
 contract = w3.eth.contract(address=contract_address, abi=abi)
 
-# UI Title
-st.title("📦 SimpleStorage on Sepolia")
-st.write("🔌 Connected to Web3:", w3.is_connected())
-st.write("📬 Contract Address:", contract_address)
+# Tab structure
+st.title("🧠 Wallet Inspector App")
+tabs = st.tabs([
+    "📦 SimpleStorage",
+    "Transaction History",
+    "🖼 NFT Viewer",
+    "💰 Wallet Summary",
+    "🔁 ERC-20 Token Transfers",
+    "⏳ Wallet Activity Timeline",
+    "📅 Snapshot Timeline"
+])
 
-# Show stored value
-stored_value = contract.functions.get().call()
-st.metric("Stored Value", stored_value)
+# 1. SimpleStorage
 
-# Allow user to enter private key and submit transaction
-st.markdown("---")
-st.subheader("🔐 Submit a New Value")
-new_value = st.number_input("Enter a new number to store", min_value=0, step=1)
-private_key = st.text_input("Enter your private key", type="password")
-submit_clicked = st.button("Submit Transaction")
+with tabs[0]:
+#st.title("📦 SimpleStorage on Sepolia")
+    st.write("🔌 Connected to Web3:", w3.is_connected())
+    st.write("📬 Contract Address:", contract_address)
 
-if submit_clicked:
-    if not private_key:
-        st.warning("Please enter your private key to submit a transaction.")
-        st.stop()
+    # Show stored value
+    stored_value = contract.functions.get().call()
+    st.metric("Stored Value", stored_value)
 
-    try:
-        account = w3.eth.account.from_key(private_key)
-        st.success(f"Wallet loaded: {account.address}")
+    # Allow user to enter private key and submit transaction
+    st.markdown("---")
+    st.subheader("🔐 Submit a New Value")
+    new_value = st.number_input("Enter a new number to store", min_value=0, step=1)
+    private_key = st.text_input("Enter your private key", type="password")
+    submit_clicked = st.button("Submit Transaction")
 
-        with st.spinner("Sending transaction..."):
-            nonce = w3.eth.get_transaction_count(account.address)
-            tx = contract.functions.set(new_value).build_transaction({
-                "from": account.address,
-                "nonce": nonce,
-                "gas": 100000,
-                "gasPrice": w3.to_wei("1", "gwei")
-            })
+    if submit_clicked:
+        if not private_key:
+            st.warning("Please enter your private key to submit a transaction.")
+            st.stop()
 
-            signed_tx = w3.eth.account.sign_transaction(tx, private_key)
-            tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
-            receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-
-            st.success("Transaction confirmed!")
-            st.write("🔗 Transaction Hash:", f"https://sepolia.etherscan.io/tx/{tx_hash.hex()}")
-
-            # Log interaction
-            log_data = {
-                "Block Number": [receipt.blockNumber],
-                "Stored Value": [new_value],
-                "Timestamp": [datetime.now()],
-                "Tx Hash": [tx_hash.hex()]
-            }
-
-            log_file = "contract_data_log.xlsx"
-            log_df = pd.DataFrame(log_data)
-            if os.path.exists(log_file):
-                old_df = pd.read_excel(log_file)
-                log_df = pd.concat([old_df, log_df], ignore_index=True)
-            log_df.to_excel(log_file, index=False)
-
-    except Exception as e:
-        st.error(f"❌ Invalid private key: {e}")
-        st.stop()
-
-# Show log
-st.markdown("---")
-st.subheader("🔁 ERC-20 Token Transfer History")
-
-wallet_history_addr = st.text_input("Enter wallet address to view token transfers", key="history")
-
-if wallet_history_addr:
-    with st.spinner("Fetching token transfers..."):
-        st.subheader("📊 Interaction Log")
-log_file = "contract_data_log.xlsx"
-if os.path.exists(log_file):
-    df_log = pd.read_excel(log_file)
-    st.dataframe(df_log, use_container_width=True)
-    csv = df_log.to_csv(index=False).encode('utf-8')
-    st.download_button("⬇️ Download CSV", csv, "contract_log.csv", "text/csv",key="download_wallet_history_button")
-else:
-    st.info("No log data available yet.")
-
-# NFT Viewer
-st.markdown("---")
-st.subheader("🖼 NFT Viewer")
-
-def fetch_nfts(owner_address, alchemy_key):
-    url = f"https://eth-mainnet.g.alchemy.com/v2/{alchemy_key}/getNFTs?owner={owner_address}"
-    response = requests.get(url)
-    try:
-        return response.json().get("ownedNfts", [])
-    except Exception as e:
-        st.error(f"Failed to load NFT data: {e}")
-        return []
-
-wallet_to_check = st.text_input("Enter wallet address to view NFTs")
-if wallet_to_check:
-    with st.spinner("Fetching NFTs..."):
-        nfts = fetch_nfts(wallet_to_check, st.secrets["ALCHEMY_API_KEY"])
-        if isinstance(nfts, list) and nfts:
-            for nft in nfts[:10]:
-                media = nft.get("media", [{}])
-                image_url = media[0].get("gateway", "")
-                title = nft.get("title", "N/A")
-                contract_address = nft.get("contractAddress", "N/A")
-                token_id = nft.get("id", {}).get("tokenId", "N/A")
-
-                st.image(image_url, width=200)
-                st.write(f"**Name:** {title}")
-                st.write(f"**Contract:** {contract_address}")
-                st.write(f"**Token ID:** {token_id}")
-
-                # Expandable metadata view
-                with st.expander("📋 View Metadata"):
-                    metadata = nft.get("metadata", {})
-                    desc = metadata.get("description", "No description available.")
-                    attrs = metadata.get("attributes", [])
-                    st.write(f"**Description:** {desc}")
-                    if attrs:
-                        attr_df = pd.DataFrame(attrs)
-                        st.write("**Attributes:**")
-                        st.dataframe(attr_df)
-                    else:
-                        st.info("No attributes found.")
-                    # Optional external link
-                    external_url = metadata.get("external_url")
-                    if external_url:
-                        st.markdown(f"[🔗 External Link]({external_url})")
-
-                st.markdown("---")
-
-        else:
-            st.warning("No NFTs found or failed to fetch from Alchemy.")
-
-# Wallet Summary
-st.markdown("---")
-st.subheader("💰 Wallet Summary")
-wallet_summary_addr = st.text_input("Enter wallet address for summary", key="summary")
-if wallet_summary_addr:
-    with st.spinner("Fetching wallet details..."):
         try:
-            # ETH balance
-            checksum_address = w3.to_checksum_address(wallet_summary_addr.strip())
-            balance_wei = w3.eth.get_balance(checksum_address)
-            balance_eth = w3.from_wei(balance_wei, 'ether')
-            st.metric("ETH Balance", f"{balance_eth:.4f} ETH")
+            account = w3.eth.account.from_key(private_key)
+            st.success(f"Wallet loaded: {account.address}")
 
-            # Token balances using Etherscan API
-            ETHERSCAN_API_KEY = st.secrets["ETHERSCAN_API_KEY"]
-            url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={wallet_history_addr}&sort=desc&apikey={ETHERSCAN_API_KEY}"
-            url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={checksum_address}&sort=desc&apikey={ETHERSCAN_API_KEY}"
-            res = requests.get(url)
-            tokens = {}
-            token_transactions = []
+            with st.spinner("Sending transaction..."):
+                nonce = w3.eth.get_transaction_count(account.address)
+                tx = contract.functions.set(new_value).build_transaction({
+                    "from": account.address,
+                    "nonce": nonce,
+                    "gas": 100000,
+                    "gasPrice": w3.to_wei("1", "gwei")
+                })
 
-            if res.status_code == 200:
-                data = res.json()
-                result = data.get("result", [])
-                if isinstance(result, list) and result:
-                    df_history = pd.DataFrame(result)
+                signed_tx = w3.eth.account.sign_transaction(tx, private_key)
+                tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+                receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
 
-                    # Clean and format
-                    df_history["TimeStamp"] = pd.to_datetime(df_history["timeStamp"], unit='s')
-                    df_history["Value"] = df_history.apply(lambda x: int(x["value"]) / (10 ** int(x.get("tokenDecimal", 18))), axis=1)
-                    df_history = df_history[["TimeStamp", "tokenName", "Value", "from", "to", "hash"]]
-                    df_history.columns = ["TimeStamp", "Token", "Value", "From", "To", "Tx Hash"]
+                st.success("Transaction confirmed!")
+                st.write("🔗 Transaction Hash:", f"https://sepolia.etherscan.io/tx/{tx_hash.hex()}")
 
-                    # Token filter
-                    unique_tokens = df_history["Token"].unique().tolist()
-                    selected_tokens = st.multiselect("Filter by token name", options=unique_tokens, default=unique_tokens, key="wallet_token_history")
+                # Log interaction
+                log_data = {
+                    "Block Number": [receipt.blockNumber],
+                    "Stored Value": [new_value],
+                    "Timestamp": [datetime.now()],
+                    "Tx Hash": [tx_hash.hex()]
+                }
 
-                    filtered_df = df_history[df_history["Token"].isin(selected_tokens)]
-                    st.dataframe(filtered_df, use_container_width=True)
-
-                    # CSV download
-                    csv = filtered_df.to_csv(index=False).encode("utf-8")
-                    st.download_button("⬇️ Download CSV", csv, "token_transfers.csv", "text/csv",key="download_wallet_summary_button")
-
-                else:
-                    st.info("No token transfer history available for this address.")
-
-                try:
-                    data = res.json()
-                    if isinstance(data.get("result"), list):
-                        for tx in data["result"][:50]:
-                            if isinstance(tx, dict):
-                                token = tx.get("tokenName")
-                                value = int(tx.get("value")) / (10 ** int(tx.get("tokenDecimal", 18)))
-                                if token:
-                                    tokens[token] = tokens.get(token, 0) + value
-                                    token_transactions.append({
-                                        "Token": token,
-                                        "Value": value,
-                                        "From": tx.get("from"),
-                                        "To": tx.get("to"),
-                                        "Hash": tx.get("hash"),
-                                        "TimeStamp": tx.get("timeStamp")
-                                    })
-                    else:
-                        st.warning("Etherscan returned an unexpected structure.")
-                        st.json(data)
-                except Exception as parse_err:
-                    st.error(f"Failed to parse Etherscan response: {parse_err}")
-
-            if tokens:
-                st.subheader("🔹 Token Holdings")
-                token_df = pd.DataFrame(tokens.items(), columns=["Token", "Approx. Total"])
-                st.dataframe(token_df, use_container_width=True)
-
-                # Pie chart
-                fig, ax = plt.subplots()
-                ax.pie(token_df["Approx. Total"], labels=token_df["Token"], autopct='%1.1f%%', startangle=90)
-                ax.axis('equal')
-                st.pyplot(fig)
-            else:
-                st.error("Failed to fetch data from Etherscan.")
-                st.info("No token transactions found.")
-
-            if token_transactions:
-                st.subheader("Recent Token Transactions")
-                tx_df = pd.DataFrame(token_transactions)
-                tx_df["TimeStamp"] = pd.to_datetime(tx_df["TimeStamp"], unit='s')
-                st.dataframe(tx_df[["TimeStamp", "Token", "Value", "From", "To", "Hash"]], use_container_width=True)
-
-            # NFT count via Alchemy
-            alchemy_key = st.secrets["ALCHEMY_API_KEY"]
-            nft_url = f"https://eth-mainnet.g.alchemy.com/v2/{alchemy_key}/getNFTs?owner={checksum_address}"
-            nft_res = requests.get(nft_url)
-            if nft_res.status_code == 200:
-                nft_data = nft_res.json()
-                nft_count = len(nft_data.get("ownedNfts", []))
-                st.metric("NFTs Owned", nft_count)
+                log_file = "contract_data_log.xlsx"
+                log_df = pd.DataFrame(log_data)
+                if os.path.exists(log_file):
+                    old_df = pd.read_excel(log_file)
+                    log_df = pd.concat([old_df, log_df], ignore_index=True)
+                log_df.to_excel(log_file, index=False)
 
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"❌ Invalid private key: {e}")
+            st.stop()
 
-import json
+# 2. Wallet History
+with tabs[1]:
+    st.markdown("---")
+    st.subheader("🔁 ERC-20 Token Transfer History")
 
-if wallet_summary_addr:
-    snapshot = {
-        "wallet": wallet_summary_addr,
-        "eth_balance": f"{balance_eth:.4f} ETH",
-        "tokens": tokens,
-        "nft_count": nft_count
-    }
+    wallet_history_addr = st.text_input("Enter wallet address to view token transfers", key="history")
 
-    snapshot_json = json.dumps(snapshot, indent=2)
-    st.download_button(
-        label="📥 Download Wallet Snapshot (JSON)",
-        data=snapshot_json,
-        file_name=f"{wallet_summary_addr}_snapshot.json",
-        mime="application/json", 
-        key= "download_wallet_compiled_summary"
-    )
-
-
-# Next step: Add ERC-20 Token Transfer History Viewer
-
-# Add this below your Wallet Summary section
-
-st.markdown("---")
-st.subheader("🔁 ERC-20 Token Transfer History")
-
-wallet_history_addr = st.text_input("Enter wallet address to view token transfers", key="token_transfer_history")
-
-if wallet_history_addr:
-    with st.spinner("Fetching token transfers..."):
-        try:
-            ETHERSCAN_API_KEY = st.secrets["ETHERSCAN_API_KEY"]
-            url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={wallet_history_addr}&sort=desc&apikey={ETHERSCAN_API_KEY}"
-            res = requests.get(url)
-            if res.status_code == 200:
-                data = res.json()
-                result = data.get("result", [])
-                if isinstance(result, list) and result:
-                    df_history = pd.DataFrame(result)
-
-                    # Clean and format
-                    df_history["TimeStamp"] = pd.to_datetime(df_history["timeStamp"], unit='s')
-                    df_history["Value"] = df_history.apply(lambda x: int(x["value"]) / (10 ** int(x.get("tokenDecimal", 18))), axis=1)
-                    df_history = df_history[["TimeStamp", "tokenName", "Value", "from", "to", "hash"]]
-                    df_history.columns = ["TimeStamp", "Token", "Value", "From", "To", "Tx Hash"]
-
-                    # Token filter
-                    unique_tokens = df_history["Token"].unique().tolist()
-                    selected_tokens = st.multiselect("Filter by token name", options=unique_tokens, default=unique_tokens, key="erc-20_wallet_history")
-
-                    filtered_df = df_history[df_history["Token"].isin(selected_tokens)]
-                    st.dataframe(filtered_df, use_container_width=True)
-
-                    # CSV download
-                    csv = filtered_df.to_csv(index=False).encode("utf-8")
-                    st.download_button("⬇️ Download CSV", csv, "token_transfers.csv", "text/csv")
-
-                else:
-                    st.info("No token transfer history available for this address.")
-            else:
-                st.error("Failed to fetch data from Etherscan.")
-
-        except Exception as e:
-            st.error(f"Error fetching token transfers: {e}")
-            st.error(f"Error: {e}")
-
-st.markdown("---")
-st.subheader("⏳ Wallet Activity Timeline")
-
-activity_addr = st.text_input("Enter wallet address for activity timeline", key="activity")
-
-if activity_addr:
-    with st.spinner("Fetching activity..."):
-        try:
-            eth_url = f"https://api.etherscan.io/api?module=account&action=txlist&address={activity_addr}&sort=asc&apikey={st.secrets['ETHERSCAN_API_KEY']}"
-            token_url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={activity_addr}&sort=asc&apikey={st.secrets['ETHERSCAN_API_KEY']}"
-            eth_res = requests.get(eth_url).json()
-            token_res = requests.get(token_url).json()
-            
-            tx_events = []
-
-            if eth_res.get("result"):
-                for tx in eth_res["result"]:
-                    tx_events.append({
-                        "Timestamp": datetime.utcfromtimestamp(int(tx["timeStamp"])),
-                        "Type": "ETH",
-                        "Direction": "Sent" if tx["from"].lower() == activity_addr.lower() else "Received",
-                        "Value": w3.from_wei(int(tx["value"]), 'ether'),
-                        "Token": "ETH",
-                        "Hash": tx["hash"]
-                    })
-
-            if token_res.get("result"):
-                for tx in token_res["result"]:
-                    tx_events.append({
-                        "Timestamp": datetime.utcfromtimestamp(int(tx["timeStamp"])),
-                        "Type": "Token",
-                        "Direction": "Sent" if tx["from"].lower() == activity_addr.lower() else "Received",
-                        "Value": int(tx["value"]) / (10 ** int(tx.get("tokenDecimal", 18))),
-                        "Token": tx["tokenName"],
-                        "Hash": tx["hash"]
-                    })
-
-            if tx_events:
-                timeline_df = pd.DataFrame(tx_events).sort_values("Timestamp", ascending=False)
-                st.dataframe(timeline_df, use_container_width=True)
-                # Export to CSV
-                csv = timeline_df.to_csv(index=False).encode('utf-8')
-                st.download_button("⬇️ Download Timeline CSV", csv, "wallet_timeline.csv", "text/csv",key="download_wallet_activity_button")
-            else:
-                st.info("No transaction history found.")
-
-        except Exception as e:
-            st.error(f"Failed to fetch timeline: {e}")
-
-
-# Wallet Snapshot Timeline Graph
-st.markdown("---")
-st.subheader("📅 Wallet Snapshot Timeline Graph")
-snapshot_dir = "wallet_snapshots"
-os.makedirs(snapshot_dir, exist_ok=True)
-
-def load_all_snapshots():
-    snapshots = []
-    for file in os.listdir(snapshot_dir):
-        if file.endswith(".json"):
-            path = os.path.join(snapshot_dir, file)
-            with open(path, "r") as f:
-                data = json.load(f)
-                data["Timestamp"] = datetime.fromtimestamp(os.path.getmtime(path))
-                snapshots.append(data)
-    return pd.DataFrame(snapshots) if snapshots else pd.DataFrame()
-
-if st.button("👀 Show Timeline Graph"):
-    df_snapshots = load_all_snapshots()
-    if df_snapshots.empty:
-        st.info("No wallet snapshots found.")
+    if wallet_history_addr:
+        with st.spinner("Fetching token transfers..."):
+            st.subheader("📊 Interaction Log")
+    log_file = "contract_data_log.xlsx"
+    if os.path.exists(log_file):
+        df_log = pd.read_excel(log_file)
+        st.dataframe(df_log, use_container_width=True)
+        csv = df_log.to_csv(index=False).encode('utf-8')
+        st.download_button("⬇️ Download CSV", csv, "contract_log.csv", "text/csv",key="download_wallet_history_button")
     else:
-        df_snapshots.sort_values("Timestamp", inplace=True)
-        fig, ax1 = plt.subplots()
-        ax1.plot(df_snapshots["Timestamp"], df_snapshots["eth_balance"].str.replace(" ETH", "").astype(float), marker='o')
-        ax1.set_xlabel("Timestamp")
-        ax1.set_ylabel("ETH Balance")
-        ax1.set_title("ETH Balance Over Time")
-        ax1.grid(True)
-        st.pyplot(fig)
-        st.dataframe(df_snapshots)
-        csv = df_snapshots.to_csv(index=False).encode("utf-8")
-        st.download_button("⬇️ Download Timeline CSV", csv, "wallet_snapshot_timeline.csv", "text/csv")
+        st.info("No log data available yet.")
+
+# 3. NFT Viewer
+with tabs[2]:
+    st.markdown("---")
+    st.subheader("🖼 NFT Viewer")
+
+    def fetch_nfts(owner_address, alchemy_key):
+        url = f"https://eth-mainnet.g.alchemy.com/v2/{alchemy_key}/getNFTs?owner={owner_address}"
+        response = requests.get(url)
+        try:
+            return response.json().get("ownedNfts", [])
+        except Exception as e:
+            st.error(f"Failed to load NFT data: {e}")
+            return []
+
+    wallet_to_check = st.text_input("Enter wallet address to view NFTs")
+    if wallet_to_check:
+        with st.spinner("Fetching NFTs..."):
+            nfts = fetch_nfts(wallet_to_check, st.secrets["ALCHEMY_API_KEY"])
+            if isinstance(nfts, list) and nfts:
+                for nft in nfts[:10]:
+                    media = nft.get("media", [{}])
+                    image_url = media[0].get("gateway", "")
+                    title = nft.get("title", "N/A")
+                    contract_address = nft.get("contractAddress", "N/A")
+                    token_id = nft.get("id", {}).get("tokenId", "N/A")
+
+                    st.image(image_url, width=200)
+                    st.write(f"**Name:** {title}")
+                    st.write(f"**Contract:** {contract_address}")
+                    st.write(f"**Token ID:** {token_id}")
+
+                    # Expandable metadata view
+                    with st.expander("📋 View Metadata"):
+                        metadata = nft.get("metadata", {})
+                        desc = metadata.get("description", "No description available.")
+                        attrs = metadata.get("attributes", [])
+                        st.write(f"**Description:** {desc}")
+                        if attrs:
+                            attr_df = pd.DataFrame(attrs)
+                            st.write("**Attributes:**")
+                            st.dataframe(attr_df)
+                        else:
+                            st.info("No attributes found.")
+                        # Optional external link
+                        external_url = metadata.get("external_url")
+                        if external_url:
+                            st.markdown(f"[🔗 External Link]({external_url})")
+
+                    st.markdown("---")
+
+            else:
+                st.warning("No NFTs found or failed to fetch from Alchemy.")
+
+# 4. Wallet Summary
+with tabs[3]:
+    st.markdown("---")
+    st.subheader("💰 Wallet Summary")
+    wallet_summary_addr = st.text_input("Enter wallet address for summary", key="summary")
+    if wallet_summary_addr:
+        with st.spinner("Fetching wallet details..."):
+            try:
+                # ETH balance
+                checksum_address = w3.to_checksum_address(wallet_summary_addr.strip())
+                balance_wei = w3.eth.get_balance(checksum_address)
+                balance_eth = w3.from_wei(balance_wei, 'ether')
+                st.metric("ETH Balance", f"{balance_eth:.4f} ETH")
+
+                # Token balances using Etherscan API
+                ETHERSCAN_API_KEY = st.secrets["ETHERSCAN_API_KEY"]
+                url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={wallet_history_addr}&sort=desc&apikey={ETHERSCAN_API_KEY}"
+                url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={checksum_address}&sort=desc&apikey={ETHERSCAN_API_KEY}"
+                res = requests.get(url)
+                tokens = {}
+                token_transactions = []
+
+                if res.status_code == 200:
+                    data = res.json()
+                    result = data.get("result", [])
+                    if isinstance(result, list) and result:
+                        df_history = pd.DataFrame(result)
+
+                        # Clean and format
+                        df_history["TimeStamp"] = pd.to_datetime(df_history["timeStamp"], unit='s')
+                        df_history["Value"] = df_history.apply(lambda x: int(x["value"]) / (10 ** int(x.get("tokenDecimal", 18))), axis=1)
+                        df_history = df_history[["TimeStamp", "tokenName", "Value", "from", "to", "hash"]]
+                        df_history.columns = ["TimeStamp", "Token", "Value", "From", "To", "Tx Hash"]
+
+                        # Token filter
+                        unique_tokens = df_history["Token"].unique().tolist()
+                        selected_tokens = st.multiselect("Filter by token name", options=unique_tokens, default=unique_tokens, key="wallet_token_history")
+
+                        filtered_df = df_history[df_history["Token"].isin(selected_tokens)]
+                        st.dataframe(filtered_df, use_container_width=True)
+
+                        # CSV download
+                        csv = filtered_df.to_csv(index=False).encode("utf-8")
+                        st.download_button("⬇️ Download CSV", csv, "token_transfers.csv", "text/csv",key="download_wallet_summary_button")
+
+                    else:
+                        st.info("No token transfer history available for this address.")
+
+                    try:
+                        data = res.json()
+                        if isinstance(data.get("result"), list):
+                            for tx in data["result"][:50]:
+                                if isinstance(tx, dict):
+                                    token = tx.get("tokenName")
+                                    value = int(tx.get("value")) / (10 ** int(tx.get("tokenDecimal", 18)))
+                                    if token:
+                                        tokens[token] = tokens.get(token, 0) + value
+                                        token_transactions.append({
+                                            "Token": token,
+                                            "Value": value,
+                                            "From": tx.get("from"),
+                                            "To": tx.get("to"),
+                                            "Hash": tx.get("hash"),
+                                            "TimeStamp": tx.get("timeStamp")
+                                        })
+                        else:
+                            st.warning("Etherscan returned an unexpected structure.")
+                            st.json(data)
+                    except Exception as parse_err:
+                        st.error(f"Failed to parse Etherscan response: {parse_err}")
+
+                if tokens:
+                    st.subheader("🔹 Token Holdings")
+                    token_df = pd.DataFrame(tokens.items(), columns=["Token", "Approx. Total"])
+                    st.dataframe(token_df, use_container_width=True)
+
+                    # Pie chart
+                    fig, ax = plt.subplots()
+                    ax.pie(token_df["Approx. Total"], labels=token_df["Token"], autopct='%1.1f%%', startangle=90)
+                    ax.axis('equal')
+                    st.pyplot(fig)
+                else:
+                    st.error("Failed to fetch data from Etherscan.")
+                    st.info("No token transactions found.")
+
+                if token_transactions:
+                    st.subheader("Recent Token Transactions")
+                    tx_df = pd.DataFrame(token_transactions)
+                    tx_df["TimeStamp"] = pd.to_datetime(tx_df["TimeStamp"], unit='s')
+                    st.dataframe(tx_df[["TimeStamp", "Token", "Value", "From", "To", "Hash"]], use_container_width=True)
+
+                # NFT count via Alchemy
+                alchemy_key = st.secrets["ALCHEMY_API_KEY"]
+                nft_url = f"https://eth-mainnet.g.alchemy.com/v2/{alchemy_key}/getNFTs?owner={checksum_address}"
+                nft_res = requests.get(nft_url)
+                if nft_res.status_code == 200:
+                    nft_data = nft_res.json()
+                    nft_count = len(nft_data.get("ownedNfts", []))
+                    st.metric("NFTs Owned", nft_count)
+
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+    import json
+
+    if wallet_summary_addr:
+        snapshot = {
+            "wallet": wallet_summary_addr,
+            "eth_balance": f"{balance_eth:.4f} ETH",
+            "tokens": tokens,
+            "nft_count": nft_count
+        }
+
+        snapshot_json = json.dumps(snapshot, indent=2)
+        st.download_button(
+            label="📥 Download Wallet Snapshot (JSON)",
+            data=snapshot_json,
+            file_name=f"{wallet_summary_addr}_snapshot.json",
+            mime="application/json", 
+            key= "download_wallet_compiled_summary"
+        )
+
+#5. ERC-20 Token Transfer History
+
+with tabs[4]:
+    st.markdown("---")
+    st.subheader("🔁 ERC-20 Token Transfer History")
+
+    wallet_history_addr = st.text_input("Enter wallet address to view token transfers", key="token_transfer_history")
+
+    if wallet_history_addr:
+        with st.spinner("Fetching token transfers..."):
+            try:
+                ETHERSCAN_API_KEY = st.secrets["ETHERSCAN_API_KEY"]
+                url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={wallet_history_addr}&sort=desc&apikey={ETHERSCAN_API_KEY}"
+                res = requests.get(url)
+                if res.status_code == 200:
+                    data = res.json()
+                    result = data.get("result", [])
+                    if isinstance(result, list) and result:
+                        df_history = pd.DataFrame(result)
+
+                        # Clean and format
+                        df_history["TimeStamp"] = pd.to_datetime(df_history["timeStamp"], unit='s')
+                        df_history["Value"] = df_history.apply(lambda x: int(x["value"]) / (10 ** int(x.get("tokenDecimal", 18))), axis=1)
+                        df_history = df_history[["TimeStamp", "tokenName", "Value", "from", "to", "hash"]]
+                        df_history.columns = ["TimeStamp", "Token", "Value", "From", "To", "Tx Hash"]
+
+                        # Token filter
+                        unique_tokens = df_history["Token"].unique().tolist()
+                        selected_tokens = st.multiselect("Filter by token name", options=unique_tokens, default=unique_tokens, key="erc-20_wallet_history")
+
+                        filtered_df = df_history[df_history["Token"].isin(selected_tokens)]
+                        st.dataframe(filtered_df, use_container_width=True)
+
+                        # CSV download
+                        csv = filtered_df.to_csv(index=False).encode("utf-8")
+                        st.download_button("⬇️ Download CSV", csv, "token_transfers.csv", "text/csv")
+
+                    else:
+                        st.info("No token transfer history available for this address.")
+                else:
+                    st.error("Failed to fetch data from Etherscan.")
+
+            except Exception as e:
+                st.error(f"Error fetching token transfers: {e}")
+                st.error(f"Error: {e}")
+
+#6. Wallet Activity Timeline
+
+with tabs[5]:
+    st.markdown("---")
+    st.subheader("⏳ Wallet Activity Timeline")
+
+    activity_addr = st.text_input("Enter wallet address for activity timeline", key="activity")
+
+    if activity_addr:
+        with st.spinner("Fetching activity..."):
+            try:
+                eth_url = f"https://api.etherscan.io/api?module=account&action=txlist&address={activity_addr}&sort=asc&apikey={st.secrets['ETHERSCAN_API_KEY']}"
+                token_url = f"https://api.etherscan.io/api?module=account&action=tokentx&address={activity_addr}&sort=asc&apikey={st.secrets['ETHERSCAN_API_KEY']}"
+                eth_res = requests.get(eth_url).json()
+                token_res = requests.get(token_url).json()
+                
+                tx_events = []
+
+                if eth_res.get("result"):
+                    for tx in eth_res["result"]:
+                        tx_events.append({
+                            "Timestamp": datetime.utcfromtimestamp(int(tx["timeStamp"])),
+                            "Type": "ETH",
+                            "Direction": "Sent" if tx["from"].lower() == activity_addr.lower() else "Received",
+                            "Value": w3.from_wei(int(tx["value"]), 'ether'),
+                            "Token": "ETH",
+                            "Hash": tx["hash"]
+                        })
+
+                if token_res.get("result"):
+                    for tx in token_res["result"]:
+                        tx_events.append({
+                            "Timestamp": datetime.utcfromtimestamp(int(tx["timeStamp"])),
+                            "Type": "Token",
+                            "Direction": "Sent" if tx["from"].lower() == activity_addr.lower() else "Received",
+                            "Value": int(tx["value"]) / (10 ** int(tx.get("tokenDecimal", 18))),
+                            "Token": tx["tokenName"],
+                            "Hash": tx["hash"]
+                        })
+
+                if tx_events:
+                    timeline_df = pd.DataFrame(tx_events).sort_values("Timestamp", ascending=False)
+                    st.dataframe(timeline_df, use_container_width=True)
+                    # Export to CSV
+                    csv = timeline_df.to_csv(index=False).encode('utf-8')
+                    st.download_button("⬇️ Download Timeline CSV", csv, "wallet_timeline.csv", "text/csv",key="download_wallet_activity_button")
+                else:
+                    st.info("No transaction history found.")
+
+            except Exception as e:
+                st.error(f"Failed to fetch timeline: {e}")
+
+
+# 7.Wallet Snapshot Timeline Graph
+with tabs[6]:
+    st.markdown("---")
+    st.subheader("📅 Wallet Snapshot Timeline Graph")
+    snapshot_dir = "wallet_snapshots"
+    os.makedirs(snapshot_dir, exist_ok=True)
+
+    def load_all_snapshots():
+        snapshots = []
+        for file in os.listdir(snapshot_dir):
+            if file.endswith(".json"):
+                path = os.path.join(snapshot_dir, file)
+                with open(path, "r") as f:
+                    data = json.load(f)
+                    data["Timestamp"] = datetime.fromtimestamp(os.path.getmtime(path))
+                    snapshots.append(data)
+        return pd.DataFrame(snapshots) if snapshots else pd.DataFrame()
+
+    if st.button("👀 Show Timeline Graph"):
+        df_snapshots = load_all_snapshots()
+        if df_snapshots.empty:
+            st.info("No wallet snapshots found.")
+        else:
+            df_snapshots.sort_values("Timestamp", inplace=True)
+            fig, ax1 = plt.subplots()
+            ax1.plot(df_snapshots["Timestamp"], df_snapshots["eth_balance"].str.replace(" ETH", "").astype(float), marker='o')
+            ax1.set_xlabel("Timestamp")
+            ax1.set_ylabel("ETH Balance")
+            ax1.set_title("ETH Balance Over Time")
+            ax1.grid(True)
+            st.pyplot(fig)
+            st.dataframe(df_snapshots)
+            csv = df_snapshots.to_csv(index=False).encode("utf-8")
+            st.download_button("⬇️ Download Timeline CSV", csv, "wallet_snapshot_timeline.csv", "text/csv")
