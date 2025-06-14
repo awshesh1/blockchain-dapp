@@ -109,10 +109,34 @@ if os.path.exists(log_file):
 else:
     st.info("No log data available yet.")
 
-# NFT Viewer Section — [Already integrated in user code]
-# Wallet Summary Section — [Already integrated in user code]
-# ERC-20 Token Transfer Viewer — [Already integrated in user code]
-# Wallet Activity Timeline — [Already integrated in user code]
+# NFT Viewer
+st.markdown("---")
+st.subheader("🖼 NFT Viewer")
+
+def fetch_nfts(owner_address, alchemy_key):
+    url = f"https://eth-mainnet.g.alchemy.com/v2/{alchemy_key}/getNFTs?owner={owner_address}"
+    response = requests.get(url)
+    try:
+        return response.json().get("ownedNfts", [])
+    except Exception as e:
+        st.error(f"Failed to load NFT data: {e}")
+        return []
+
+wallet_to_check = st.text_input("Enter wallet address to view NFTs")
+if wallet_to_check:
+    with st.spinner("Fetching NFTs..."):
+        nfts = fetch_nfts(wallet_to_check, st.secrets["ALCHEMY_API_KEY"])
+        if isinstance(nfts, list) and nfts:
+            for nft in nfts[:10]:
+                media = nft.get("media", [{}])
+                image_url = media[0].get("gateway", "")
+                st.image(image_url, width=200)
+                st.write(f"**Name:** {nft.get('title')}")
+                st.write(f"**Contract:** {nft.get('contractAddress')}")
+                st.write(f"**Token ID:** {nft.get('id', {}).get('tokenId')}")
+                st.markdown("---")
+        else:
+            st.warning("No NFTs found or failed to fetch from Alchemy.")
 
 # Wallet Snapshot Timeline Graph
 st.markdown("---")
