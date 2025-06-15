@@ -4,7 +4,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
-from moralis import evm_api
+from moralis_sdk import evm_api
 from cachetools import TTLCache
 from web3 import Web3
 
